@@ -14,11 +14,11 @@ if (!projectId) {
 }
 
 // Set up chains
-export const networks = [base, mainnet];
+export const networks = [base, mainnet] as const;
 
 // Create Wagmi adapter
 export const wagmiAdapter = new WagmiAdapter({
-  networks,
+  networks: [base, mainnet],
   projectId,
   ssr: true,
   storage: createStorage({
@@ -32,7 +32,7 @@ export const queryClient = new QueryClient();
 // Create AppKit instance
 export const appKit = createAppKit({
   adapters: [wagmiAdapter],
-  networks,
+  networks: [base, mainnet],
   projectId,
   metadata: {
     name: "Onchain Radar",
