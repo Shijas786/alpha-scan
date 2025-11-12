@@ -53,6 +53,7 @@ Provide a concise analysis in JSON format:
 }
 `;
 
+    const openai = getOpenAIClient();
     const response = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       messages: [
