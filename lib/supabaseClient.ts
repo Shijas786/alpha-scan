@@ -3,7 +3,7 @@ import { createClient, SupabaseClient } from "@supabase/supabase-js";
 // Lazy-load Supabase client to avoid build-time initialization
 let supabaseClient: SupabaseClient | null = null;
 
-function getSupabaseClient(): SupabaseClient {
+export function getSupabaseClient(): SupabaseClient {
   if (!supabaseClient) {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
     const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
@@ -12,8 +12,8 @@ function getSupabaseClient(): SupabaseClient {
   return supabaseClient;
 }
 
-// Export for backwards compatibility
-export const supabase = getSupabaseClient();
+// Legacy export - call getSupabaseClient() to get the client
+export const supabase = getSupabaseClient;
 
 /**
  * Database Types
@@ -61,7 +61,7 @@ export interface Notification {
 export async function addWalletSubscription(
   subscription: WalletSubscription
 ) {
-  const { data, error } = await supabase
+  const { data, error} = await getSupabaseClient()
     .from("wallet_subscriptions")
     .insert(subscription)
     .select()
@@ -75,7 +75,7 @@ export async function addWalletSubscription(
  * Get all active subscriptions for a user
  */
 export async function getUserSubscriptions(followerFid: string) {
-  const { data, error } = await supabase
+  const { data, error } = await getSupabaseClient()
     .from("wallet_subscriptions")
     .select("*")
     .eq("follower_fid", followerFid)
@@ -90,7 +90,7 @@ export async function getUserSubscriptions(followerFid: string) {
  * Get all active subscriptions (for polling)
  */
 export async function getAllActiveSubscriptions() {
-  const { data, error } = await supabase
+  const { data, error } = await getSupabaseClient()
     .from("wallet_subscriptions")
     .select("*")
     .eq("is_active", true);
@@ -103,7 +103,7 @@ export async function getAllActiveSubscriptions() {
  * Remove a subscription
  */
 export async function removeWalletSubscription(id: string) {
-  const { error } = await supabase
+  const { error } = await getSupabaseClient()
     .from("wallet_subscriptions")
     .update({ is_active: false })
     .eq("id", id);
@@ -115,7 +115,7 @@ export async function removeWalletSubscription(id: string) {
  * Store wallet activity
  */
 export async function storeWalletActivity(activity: WalletActivity) {
-  const { data, error } = await supabase
+  const { data, error } = await getSupabaseClient()
     .from("wallet_activities")
     .insert(activity)
     .select()
@@ -132,7 +132,7 @@ export async function getWalletActivity(
   walletAddress: string,
   limit: number = 20
 ) {
-  const { data, error } = await supabase
+  const { data, error } = await getSupabaseClient()
     .from("wallet_activities")
     .select("*")
     .eq("wallet_address", walletAddress.toLowerCase())
@@ -147,7 +147,7 @@ export async function getWalletActivity(
  * Store notification record
  */
 export async function storeNotification(notification: Notification) {
-  const { data, error } = await supabase
+  const { data, error } = await getSupabaseClient()
     .from("notifications")
     .insert(notification)
     .select()
@@ -161,7 +161,7 @@ export async function storeNotification(notification: Notification) {
  * Update subscription last checked time
  */
 export async function updateSubscriptionLastChecked(id: string) {
-  const { error } = await supabase
+  const { error } = await getSupabaseClient()
     .from("wallet_subscriptions")
     .update({ last_checked: new Date().toISOString() })
     .eq("id", id);
