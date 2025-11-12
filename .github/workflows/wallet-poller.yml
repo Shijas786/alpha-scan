@@ -1,0 +1,32 @@
+name: Wallet Activity Poller
+
+on:
+  schedule:
+    # Runs every 5 minutes
+    - cron: '*/5 * * * *'
+  
+  # Allows manual triggering from GitHub Actions tab
+  workflow_dispatch:
+
+jobs:
+  poll-wallets:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Call Poller Endpoint
+        run: |
+          curl -X POST ${{ secrets.VERCEL_APP_URL }}/api/poller \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json" \
+            --fail-with-body \
+            -w "\nHTTP Status: %{http_code}\n"
+        continue-on-error: false
+      
+      - name: Log Success
+        if: success()
+        run: echo "✅ Poller executed successfully at $(date)"
+      
+      - name: Log Failure
+        if: failure()
+        run: echo "❌ Poller failed at $(date)"
+
