@@ -1,9 +1,17 @@
 import OpenAI from "openai";
 import { getWalletPortfolio, compareWallets, Transaction } from "./covalent";
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+// Lazy-load OpenAI client to avoid build-time initialization
+let openaiClient: OpenAI | null = null;
+
+function getOpenAIClient(): OpenAI {
+  if (!openaiClient) {
+    openaiClient = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY || "",
+    });
+  }
+  return openaiClient;
+}
 
 export interface AgentAnalysis {
   summary: string;
@@ -109,6 +117,7 @@ Provide a 3-4 sentence comparison highlighting:
 3. What Wallet B could learn from Wallet A (or vice versa)
 `;
 
+    const openai = getOpenAIClient();
     const response = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       messages: [
