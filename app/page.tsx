@@ -5,9 +5,11 @@ import { useAccount } from "wagmi";
 import { Radar, Wallet, Bell, TrendingUp, Users } from "lucide-react";
 import { WalletSearch } from "@/components/WalletSearch";
 import { WalletCard } from "@/components/WalletCard";
+import { useAppKit } from "@reown/appkit/react";
 
 export default function Home() {
   const { address, isConnected } = useAccount();
+  const { open } = useAppKit();
   const [selectedWallet, setSelectedWallet] = useState<string | null>(null);
   const [subscriptions, setSubscriptions] = useState<any[]>([]);
   const [userFid, setUserFid] = useState<string | null>(null);
@@ -86,7 +88,30 @@ export default function Home() {
             </div>
           </div>
           
-          <appkit-button />
+          {isConnected ? (
+            <div className="flex items-center gap-3">
+              <div className="text-right">
+                <div className="text-sm font-medium text-gray-900">
+                  {address?.slice(0, 6)}...{address?.slice(-4)}
+                </div>
+                <div className="text-xs text-gray-500">Connected</div>
+              </div>
+              <button
+                onClick={() => open()}
+                className="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm font-medium transition-colors"
+              >
+                Disconnect
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => open()}
+              className="px-6 py-2.5 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors flex items-center gap-2"
+            >
+              <Wallet size={18} />
+              Connect Wallet
+            </button>
+          )}
         </div>
       </header>
 
@@ -110,8 +135,8 @@ export default function Home() {
 
             <div className="flex items-center justify-center gap-4 mb-12">
               <button
-                onClick={() => (window as any).appKit?.open()}
-                className="px-8 py-4 bg-blue-600 text-white rounded-lg text-lg font-semibold hover:bg-blue-700 transition-colors flex items-center gap-2"
+                onClick={() => open()}
+                className="px-8 py-4 bg-blue-600 text-white rounded-lg text-lg font-semibold hover:bg-blue-700 transition-colors flex items-center gap-2 shadow-lg hover:shadow-xl"
               >
                 <Wallet size={20} />
                 Connect Wallet to Start
