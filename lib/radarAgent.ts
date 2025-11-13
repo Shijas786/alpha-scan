@@ -30,26 +30,59 @@ export async function analyzeWalletActivity(
   try {
     const portfolio = await getWalletPortfolio(walletAddress);
     
+    // Calculate wallet metrics
+    const totalValue = portfolio.total_balance_usd;
+    const tokenCount = portfolio.tokens.length;
+    const recentTxCount = transactions.length;
+    const avgTxValue = transactions.length > 0 
+      ? transactions.reduce((sum, tx) => sum + (tx.value_quote || 0), 0) / transactions.length 
+      : 0;
+    
+    // Determine wallet type
+    const largestHolding = portfolio.tokens[0]?.quote || 0;
+    const diversificationRatio = tokenCount > 0 ? largestHolding / totalValue : 1;
+    
+    // Count transaction directions
+    const sentCount = transactions.filter(tx => tx.from_address === walletAddress.toLowerCase()).length;
+    const receivedCount = transactions.length - sentCount;
+    
     const prompt = `
-You are an onchain intelligence agent analyzing wallet activity on Base and Ethereum.
+You are an expert blockchain analyst. Analyze this SPECIFIC wallet's unique characteristics.
 
-Wallet: ${walletAddress}
-Total Portfolio Value: $${portfolio.total_balance_usd.toFixed(2)}
-Token Count: ${portfolio.tokens.length}
-Recent Transactions: ${transactions.length}
+WALLET ADDRESS: ${walletAddress}
+TIMESTAMP: ${new Date().toISOString()}
 
-Top Holdings:
-${portfolio.tokens.slice(0, 5).map(t => `- ${t.contract_ticker_symbol}: $${t.quote.toFixed(2)}`).join('\n')}
+KEY METRICS:
+- Portfolio Value: $${totalValue.toFixed(2)}
+- Token Holdings: ${tokenCount} different tokens
+- Recent Transactions: ${recentTxCount} txs
+- Average Transaction: $${avgTxValue.toFixed(2)}
+- Sent/Received Ratio: ${sentCount}/${receivedCount}
+- Diversification: ${(diversificationRatio * 100).toFixed(1)}% in largest holding
 
-Recent Activity:
-${transactions.slice(0, 10).map(tx => `- ${tx.block_signed_at}: ${tx.from_address === walletAddress.toLowerCase() ? 'Sent' : 'Received'} $${tx.value_quote?.toFixed(2) || 0}`).join('\n')}
+TOP HOLDINGS (Specific tokens owned):
+${portfolio.tokens.slice(0, 5).map((t, i) => `${i + 1}. ${t.contract_ticker_symbol}: $${t.quote.toFixed(2)} (${((t.quote / totalValue) * 100).toFixed(1)}% of portfolio)`).join('\n')}
 
-Provide a concise analysis in JSON format:
+RECENT TRANSACTION HISTORY:
+${transactions.slice(0, 10).map((tx, i) => {
+  const direction = tx.from_address === walletAddress.toLowerCase() ? '📤 SENT' : '📥 RECEIVED';
+  const value = tx.value_quote?.toFixed(2) || '0.00';
+  const timeAgo = Math.floor((Date.now() - new Date(tx.block_signed_at).getTime()) / 3600000);
+  return `${i + 1}. ${direction} $${value} (${timeAgo}h ago)`;
+}).join('\n')}
+
+IMPORTANT: Provide a UNIQUE analysis based on THIS SPECIFIC wallet's actual data above. 
+- Reference the ACTUAL token names they hold
+- Comment on their REAL transaction patterns
+- Consider their ACTUAL portfolio size
+- Be specific about what makes THIS wallet different
+
+Return JSON format:
 {
-  "summary": "2-3 sentence overview of wallet behavior",
-  "insights": ["3-4 key observations about trading patterns, holdings, or activity"],
-  "riskLevel": "low/medium/high based on diversification and activity",
-  "recommendations": ["2-3 actionable insights for someone following this wallet"]
+  "summary": "2-3 sentences describing THIS SPECIFIC wallet's unique strategy and holdings",
+  "insights": ["3-4 observations about THIS wallet's actual behavior, mentioning specific tokens/amounts"],
+  "riskLevel": "low/medium/high (based on diversification ratio: ${diversificationRatio.toFixed(2)})",
+  "recommendations": ["2-3 specific suggestions based on THIS wallet's actual portfolio"]
 }
 `;
 
@@ -59,14 +92,14 @@ Provide a concise analysis in JSON format:
       messages: [
         {
           role: "system",
-          content: "You are an expert blockchain analyst. Provide concise, actionable insights about wallet behavior. Always respond with valid JSON.",
+          content: "You are an expert blockchain analyst. Provide SPECIFIC, DATA-DRIVEN insights unique to each wallet. Never give generic responses. Always mention actual token names, amounts, and patterns from the data provided. Respond with valid JSON.",
         },
         {
           role: "user",
           content: prompt,
         },
       ],
-      temperature: 0.7,
+      temperature: 0.8, // Increased for more varied responses
       response_format: { type: "json_object" },
     });
 
@@ -80,11 +113,16 @@ Provide a concise analysis in JSON format:
     };
   } catch (error) {
     console.error("Error analyzing wallet:", error);
+    // Return error with wallet-specific context
     return {
-      summary: "Unable to analyze wallet activity at this time.",
-      insights: [],
+      summary: `Analysis unavailable for ${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}. This could be due to API limits or the wallet having no recent activity.`,
+      insights: [
+        `Wallet: ${walletAddress}`,
+        `Check if OpenAI API key is configured`,
+        "Try again in a few moments"
+      ],
       riskLevel: "medium",
-      recommendations: [],
+      recommendations: ["Ensure API keys are properly configured in environment variables"],
     };
   }
 }
@@ -99,23 +137,40 @@ export async function compareWalletsWithAI(
   try {
     const comparison = await compareWallets(address1, address2);
     
+    // Calculate metrics for better comparison
+    const valueDiff = comparison.wallet1.totalValue - comparison.wallet2.totalValue;
+    const activityDiff = comparison.wallet1.recentTxCount - comparison.wallet2.recentTxCount;
+    const avgTx1 = comparison.wallet1.recentTxCount > 0 
+      ? comparison.wallet1.totalValue / comparison.wallet1.recentTxCount 
+      : 0;
+    const avgTx2 = comparison.wallet2.recentTxCount > 0 
+      ? comparison.wallet2.totalValue / comparison.wallet2.recentTxCount 
+      : 0;
+    
     const prompt = `
-Compare these two wallets on Base/Ethereum:
+Compare these TWO SPECIFIC wallets. Be detailed and reference actual differences.
 
-Wallet A (${address1}):
-- Total Value: $${comparison.wallet1.totalValue.toFixed(2)}
-- Tokens: ${comparison.wallet1.tokenCount}
-- Recent Transactions: ${comparison.wallet1.recentTxCount}
+WALLET A: ${address1}
+- Portfolio: $${comparison.wallet1.totalValue.toFixed(2)}
+- Tokens Held: ${comparison.wallet1.tokenCount}
+- Recent Activity: ${comparison.wallet1.recentTxCount} transactions
+- Avg Transaction: $${avgTx1.toFixed(2)}
 
-Wallet B (${address2}):
-- Total Value: $${comparison.wallet2.totalValue.toFixed(2)}
-- Tokens: ${comparison.wallet2.tokenCount}
-- Recent Transactions: ${comparison.wallet2.recentTxCount}
+WALLET B: ${address2}
+- Portfolio: $${comparison.wallet2.totalValue.toFixed(2)}
+- Tokens Held: ${comparison.wallet2.tokenCount}
+- Recent Activity: ${comparison.wallet2.recentTxCount} transactions
+- Avg Transaction: $${avgTx2.toFixed(2)}
 
-Provide a 3-4 sentence comparison highlighting:
-1. Which wallet is more active/successful
-2. Key differences in strategy
-3. What Wallet B could learn from Wallet A (or vice versa)
+DIFFERENCES:
+- Portfolio Gap: $${Math.abs(valueDiff).toFixed(2)} (${valueDiff > 0 ? 'A leads' : 'B leads'})
+- Activity Gap: ${Math.abs(activityDiff)} transactions (${activityDiff > 0 ? 'A more active' : 'B more active'})
+
+Provide a detailed 4-5 sentence comparison that:
+1. States which wallet is financially larger and by how much
+2. Compares their trading activity levels
+3. Identifies different strategies (holder vs trader, diversified vs concentrated)
+4. Gives specific actionable advice based on these ACTUAL numbers
 `;
 
     const openai = getOpenAIClient();
@@ -124,15 +179,15 @@ Provide a 3-4 sentence comparison highlighting:
       messages: [
         {
           role: "system",
-          content: "You are an expert blockchain analyst providing wallet comparisons. Be concise and actionable.",
+          content: "You are an expert blockchain analyst. Compare wallets using SPECIFIC data points. Always reference actual dollar amounts, transaction counts, and percentages. Make comparisons concrete and actionable.",
         },
         {
           role: "user",
           content: prompt,
         },
       ],
-      temperature: 0.7,
-      max_tokens: 300,
+      temperature: 0.8,
+      max_tokens: 400,
     });
 
     return response.choices[0].message.content || "Comparison unavailable";
